@@ -1,75 +1,72 @@
-from random import randint
-
-
-def generateARandomPermutation(n):
-    perm = [i for i in range(n)]
-    pos1 = randint(0, n - 1)
-    pos2 = randint(0, n - 1)
-    perm[pos1], perm[pos2] = perm[pos2], perm[pos1]
-    return perm
+import random
 
 
 class Chromosome:
-    def __init__(self, problParam=None):
-        self.__problParam = problParam  # problParam has to store the number of nodes/cities
-        self.__repres = generateARandomPermutation(self.__problParam['noNodes'])
-        self.__fitness = self.__problParam['function'](self.__repres, self.__problParam)
+    def __init__(self, params=None):
+        self.__params = params
+        self.__route = random.sample(self.__params['vertices'], self.__params['noV'])
+        self.__fitness = self.__params['fitness'](self.__route)
 
     @property
     def repres(self):
-        return self.__repres
+        return self.__route
 
     @property
     def fitness(self):
-        return self.__fitness
+        return self.__fitness.get_fitness()
 
     @repres.setter
     def repres(self, l=[]):
-        self.__repres = l
+        self.__route = l
 
     @fitness.setter
     def fitness(self, fit=0.0):
+        # self.__fitness.set_fitness(fit)
         self.__fitness = fit
 
     def crossover(self, c):
-        # order XO
-        pos1 = randint(-1, self.__problParam['noNodes'] - 1)
-        pos2 = randint(-1, self.__problParam['noNodes'] - 1)
-        if pos2 < pos1:
-            pos1, pos2 = pos2, pos1
-        k = 0
-        newrepres = self.__repres[pos1: pos2]
-        # print(newrepres)
-        # print(c.__repres[pos2:] + c.__repres[:pos2])
-        for el in c.__repres[pos2:] + c.__repres[:pos2]:
-            if el not in newrepres:
-                if len(newrepres) < self.__problParam['noNodes'] - pos1:
-                    newrepres.append(el)
-                else:
-                    newrepres.insert(k, el)
-                    k += 1
+        # ordered crossover
+        child = []
+        childP1 = []
+        childP2 = []
 
-        offspring = Chromosome(self.__problParam)
-        offspring.repres = newrepres
-        return offspring
+        geneA = int(random.random() * len(self.__route))
+        geneB = int(random.random() * len(c.repres))
+
+        startGene = min(geneA, geneB)
+        endGene = max(geneA, geneB)
+
+        # randomly select a subset of the first parent string
+        for i in range(startGene, endGene):
+            childP1.append(self.__route[i])
+
+        # fill the remainder of the route with the genes from the second parent in the order in which they appear,
+        # without duplicating any genes in the selected subset from the first parent
+        childP2 = [item for item in c.repres if item not in childP1]
+
+        child = childP1 + childP2
+
+        self.__route = child
+        return self
 
     def mutation(self):
-        # insert mutation
-        pos1 = randint(0, self.__problParam['noNodes'] - 1)
-        pos2 = randint(0, self.__problParam['noNodes'] - 1)
-        if pos2 < pos1:
-            pos1, pos2 = pos2, pos1
-        el = self.__repres[pos2]
-        del self.__repres[pos2]
-        self.__repres.insert(pos1 + 1, el)
+        # swap mutation -> with specified low probability, two cities will swap places in our route
+        for swapped in range(len(self.__route)):
+            x = random.random()
+            if x < self.__params['mutationRate']:
+                swapWith = int(random.random() * len(self.__route))
+
+                node1 = self.__route[swapped]
+                node2 = self.__route[swapWith]
+
+                self.__route[swapped] = node2
+                self.__route[swapWith] = node1
 
     def __str__(self):
-        return '\n Chromo: ' + str(self.__repres) + ' has fit: ' + str(self.__fitness)
+        return '\n Chromo: ' + str(self.__route) + ' has fit: ' + str(self.__fitness)
 
     def __repr__(self):
         return self.__str__()
 
     def __eq__(self, c):
-        return self.__repres == c.__repres and self.__fitness == c.__fitness
-
-
+        return self.__route == c.__repres and self.__fitness == c.__fitness
